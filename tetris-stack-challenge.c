@@ -167,23 +167,26 @@ void exibirPilha(PilhaReserva *pilha) {
 
 // Função para exibir o estado completo do jogo
 void exibirEstado(FilaPecas *fila, PilhaReserva *pilha) {
-    printf("\n--------------------------------------\n");
-    printf("          ESTADO ATUAL\n");
-    printf("--------------------------------------\n");
+    printf("\n---------------------------------------------\n");
+    printf("              ESTADO ATUAL\n");
+    printf("---------------------------------------------\n");
     exibirFila(fila);
     exibirPilha(pilha);
-    printf("--------------------------------------\n");
+    printf("---------------------------------------------\n");
     printf("Fila: %d/%d | Pilha: %d/%d\n", fila->tamanho, MAX_FILA, pilha->topo + 1, MAX_PILHA);
-    printf("--------------------------------------\n");
+    printf("---------------------------------------------\n");
 }
 
 // Função para exibir o menu de opções
 void exibirMenu() {
-    printf("\n--- Tetris Stack - Controle de peças ---\n");
-    printf("1 - Jogar peça\n");
-    printf("2 - Reservar peça\n");
-    printf("3 - Usar peça reservada\n");
+    printf("\n========== Tetris Stack - Controle de peças ==========\n");
+    printf("1 - Jogar peça da frente da fila\n");
+    printf("2 - Enviar peça da fila para a pilha de reserva\n");
+    printf("3 - Usar peça da pilha de reserva\n");
+    printf("4 - Trocar peça da frente da fila com o topo da pilha\n");
+    printf("5 - Trocar os 3 primeiros da fila com as 3 peças da pilha\n");
     printf("0 - Sair\n");
+    printf("-----------------------------------------------------\n");
     printf("Escolha uma opção: ");
 }
 
@@ -221,7 +224,7 @@ void reservarPeca(FilaPecas *fila, PilhaReserva *pilha) {
     
     if (dequeue(fila, &pecaReservada)) {
         if (push(pilha, pecaReservada)) {
-            printf("\n[SUCESSO] Peça [%c %d] foi reservada!\n", pecaReservada.nome, pecaReservada.id);
+            printf("\n[SUCESSO] Peça [%c %d] foi enviada para a pilha de reserva!\n", pecaReservada.nome, pecaReservada.id);
             
             // Adiciona uma nova peça automaticamente à fila
             Peca novaPeca = gerarPeca();
@@ -242,17 +245,99 @@ void usarPecaReservada(PilhaReserva *pilha) {
     }
 }
 
+// Função para trocar a peça da frente da fila com o topo da pilha
+void trocarPecaAtual(FilaPecas *fila, PilhaReserva *pilha) {
+    if (filaVazia(fila)) {
+        printf("\n[ERRO] Fila vazia! Não há peça para trocar.\n");
+        return;
+    }
+    
+    if (pilhaVazia(pilha)) {
+        printf("\n[ERRO] Pilha vazia! Não há peça reservada para trocar.\n");
+        return;
+    }
+    
+    // Guarda temporariamente a peça da frente da fila
+    Peca pecaFila = fila->pecas[fila->frente];
+    
+    // Guarda temporariamente a peça do topo da pilha
+    Peca pecaPilha = pilha->pecas[pilha->topo];
+    
+    // Realiza a troca
+    fila->pecas[fila->frente] = pecaPilha;
+    pilha->pecas[pilha->topo] = pecaFila;
+    
+    printf("\n[SUCESSO] Troca realizada!\n");
+    printf("  -> Peça [%c %d] da fila foi para a pilha.\n", pecaFila.nome, pecaFila.id);
+    printf("  -> Peça [%c %d] da pilha foi para a fila.\n", pecaPilha.nome, pecaPilha.id);
+}
+
+// Função para trocar as 3 primeiras peças da fila com as 3 da pilha
+void trocaMultipla(FilaPecas *fila, PilhaReserva *pilha) {
+    // Verifica se a fila tem pelo menos 3 peças
+    if (fila->tamanho < 3) {
+        printf("\n[ERRO] A fila precisa ter pelo menos 3 peças para realizar a troca múltipla.\n");
+        printf("  -> Peças na fila: %d/%d\n", fila->tamanho, MAX_FILA);
+        return;
+    }
+    
+    // Verifica se a pilha tem exatamente 3 peças
+    if (pilha->topo + 1 != 3) {
+        printf("\n[ERRO] A pilha precisa ter exatamente 3 peças para realizar a troca múltipla.\n");
+        printf("  -> Peças na pilha: %d/%d\n", pilha->topo + 1, MAX_PILHA);
+        return;
+    }
+    
+    printf("\n[INFO] Iniciando troca múltipla...\n");
+    
+    // Array temporário para armazenar as 3 primeiras peças da fila
+    Peca tempFila[3];
+    int i;
+    int indice = fila->frente;
+    
+    // Copia as 3 primeiras peças da fila
+    for (i = 0; i < 3; i++) {
+        tempFila[i] = fila->pecas[indice];
+        indice = (indice + 1) % MAX_FILA;
+    }
+    
+    // Array temporário para armazenar as 3 peças da pilha
+    Peca tempPilha[3];
+    
+    // Copia as 3 peças da pilha (do topo para a base)
+    for (i = 0; i < 3; i++) {
+        tempPilha[i] = pilha->pecas[pilha->topo - i];
+    }
+    
+    // Coloca as peças da pilha nas 3 primeiras posições da fila
+    indice = fila->frente;
+    for (i = 0; i < 3; i++) {
+        fila->pecas[indice] = tempPilha[i];
+        indice = (indice + 1) % MAX_FILA;
+    }
+    
+    // Coloca as peças da fila na pilha (invertendo a ordem para manter LIFO)
+    for (i = 0; i < 3; i++) {
+        pilha->pecas[pilha->topo - i] = tempFila[i];
+    }
+    
+    printf("[SUCESSO] Troca múltipla realizada!\n");
+    printf("  -> As 3 primeiras peças da fila foram trocadas com as 3 peças da pilha.\n");
+}
+
 // Função para popular a fila inicial com peças
 void popularFilaInicial(FilaPecas *fila) {
     int i;
-    printf("\n[INFO] Inicializando fila com %d peças...\n", MAX_FILA);
+    printf("\n========== INICIALIZANDO TETRIS STACK ==========\n");
+    printf("[INFO] Gerando %d peças iniciais para a fila...\n\n", MAX_FILA);
     
     for (i = 0; i < MAX_FILA; i++) {
         Peca peca = gerarPeca();
         enqueue(fila, peca);
-        printf("  -> Peça [%c %d] adicionada.\n", peca.nome, peca.id);
+        printf("  %d. Peça [%c %d] adicionada.\n", i + 1, peca.nome, peca.id);
     }
-    printf("[INFO] Fila inicializada com sucesso!\n");
+    printf("\n[INFO] Fila inicializada com sucesso!\n");
+    printf("-----------------------------------------------\n");
 }
 
 // FUNÇÃO PRINCIPAL
@@ -295,9 +380,19 @@ int main() {
                 usarPecaReservada(&pilha);
                 break;
                 
+            case 4: // Trocar peça da frente da fila com topo da pilha
+                trocarPecaAtual(&fila, &pilha);
+                break;
+                
+            case 5: // Trocar 3 primeiras da fila com 3 da pilha
+                trocaMultipla(&fila, &pilha);
+                break;
+                
             case 0: // Sair
-                printf("\n[INFO] Encerrando programa...\n");
-                printf("Obrigado por jogar Tetris Stack!\n");
+                printf("\n---------------------------------------\n");
+                printf("[INFO] Encerrando Tetris Stack...\n");
+                printf("Obrigado por jogar!\n");
+                printf("---------------------------------------\n");
                 break;
                 
             default:
